@@ -19,6 +19,8 @@ RUN ssh-keygen -N "" -f /root/.ssh/id_rsa && \
     echo "StrictHostKeyChecking no" >> /root/.ssh/config && \
     echo "UserKnownHostsFile /dev/null" >> /root/.ssh/config
 
+RUN sed -i.bak s/"64000"/"9001"/g /usr/bin/tsung
+RUN sed -i.bak s/"65500"/"9050"/g /usr/bin/tsung
 
 RUN mkdir -p /var/log/tsung && echo "" > /var/log/tsung/tsung.log
 
@@ -37,6 +39,9 @@ ENV BINDIR=/usr/lib64/erlang/erts-5.8.5/
 # mount a location on the disk to access the test scripts
 RUN mkdir -p /usr/local/tsung
 VOLUME ["/usr/local/tsung"]
+
+EXPOSE 9001-9050
+
 
 ENTRYPOINT ["tsung-runner"]
 
