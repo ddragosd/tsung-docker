@@ -19,9 +19,6 @@ RUN ssh-keygen -N "" -f /root/.ssh/id_rsa && \
     echo "StrictHostKeyChecking no" >> /root/.ssh/config && \
     echo "UserKnownHostsFile /dev/null" >> /root/.ssh/config
 
-RUN sed -i.bak s/"64000"/"9001"/g /usr/bin/tsung
-RUN sed -i.bak s/"65500"/"9050"/g /usr/bin/tsung
-
 RUN mkdir -p /var/log/tsung && echo "" > /var/log/tsung/tsung.log
 
 COPY ./scripts/tsung-runner.sh /usr/bin/tsung-runner
@@ -40,7 +37,15 @@ ENV BINDIR=/usr/lib64/erlang/erts-5.8.5/
 RUN mkdir -p /usr/local/tsung
 VOLUME ["/usr/local/tsung"]
 
+
 EXPOSE 9001-9050
+#
+# make sure inet_dist_listen_* properties are available when Erlang runs
+#
+RUN sed -i.bak s/"64000"/"9001"/g /usr/bin/tsung
+RUN sed -i.bak s/"65500"/"9050"/g /usr/bin/tsung
+RUN printf "[{kernel,[{inet_dist_listen_min,9001},{inet_dist_listen_max,9050}]}]. \n\n" > /root/sys.config
+RUN sed -i.bak s/"erlexec"/"erlexec -config \/root\/sys "/g /usr/bin/erl
 
 
 ENTRYPOINT ["tsung-runner"]
