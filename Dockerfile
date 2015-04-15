@@ -53,6 +53,7 @@ COPY ./scripts/tsung-update-hosts.sh /usr/bin/tsung-update-hosts
 RUN chmod +x /usr/bin/tsung-update-hosts
 RUN mkdir -p /etc/tsung/
 RUN echo "* * * * * /usr/bin/tsung-update-hosts >> /var/log/tsung/tsung-update-hosts.log 2>&1" > /etc/crontab
+RUN touch /var/log/tsung/tsung-update-hosts.log
 
 ENTRYPOINT ["tsung-runner"]
 
