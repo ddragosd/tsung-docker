@@ -5,10 +5,16 @@
 # make sure SSHD is started in order to connect to other tsung agents
 service sshd start
 
+# start crontab to update tsung hosts found in the cluster
+echo ${MARATHON_URL} > /etc/tsung/marathon_url
+crontab /etc/crontab
+service crond start
+
+
 slave=$(echo $SLAVE)
 if [[ -n "${slave}" ]]; then
     echo "Running in SLAVE mode ..."
-    tail -f /var/log/tsung/tsung.log
+    tail -f /var/log/tsung/tsung-update-hosts.log
     exit
 fi
 

@@ -47,6 +47,12 @@ RUN sed -i.bak s/"65500"/"9050"/g /usr/bin/tsung
 RUN printf "[{kernel,[{inet_dist_listen_min,9001},{inet_dist_listen_max,9050}]}]. \n\n" > /root/sys.config
 RUN sed -i.bak s/"erlexec"/"erlexec -config \/root\/sys "/g /usr/bin/erl
 
+# setup for auto-discovery of the tsung nodes
+RUN -y yum install crontabs
+COPY ./scripts/tsung-update-hosts.sh /usr/bin/tsung-update-hosts
+RUN chmod +x /usr/bin/tsung-update-hosts
+RUN mkdir -p /etc/tsung/
+RUN echo "* * * * * /usr/bin/tsung-update-hosts >> /var/log/tsung/tsung-update-hosts.log 2>&1" > /etc/crontab
 
 ENTRYPOINT ["tsung-runner"]
 
