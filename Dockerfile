@@ -48,7 +48,7 @@ RUN printf "[{kernel,[{inet_dist_listen_min,9001},{inet_dist_listen_max,9050}]}]
 RUN sed -i.bak s/"erlexec"/"erlexec -config \/root\/sys "/g /usr/bin/erl
 
 # setup for auto-discovery of the tsung nodes
-RUN -y yum install crontabs
+RUN yum -y install crontabs
 COPY ./scripts/tsung-update-hosts.sh /usr/bin/tsung-update-hosts
 RUN chmod +x /usr/bin/tsung-update-hosts
 RUN mkdir -p /etc/tsung/
