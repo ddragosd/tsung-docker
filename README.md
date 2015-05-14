@@ -88,6 +88,8 @@ docker run -d \
 
 ### Running in Apache Mesos and Marathon
 
+![image](https://cloud.githubusercontent.com/assets/541933/7624252/9e98b2d2-f99a-11e4-9cdc-828fee71c30e.png)
+
 The main purpose of running a Docker container with Tsung is the ease of scale and Mesos with Marathon have great support for this.
 The containers need Marathon's base URL in order to auto-discover the nodes in the cluster; this is set in an environment variable : `MARATHON_URL`. 
 
