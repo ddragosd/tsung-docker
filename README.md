@@ -101,6 +101,7 @@ You can then expose that data via a web-server such as `nginx`. The directory on
 
 Use Marathon API to make a POST to `http://<marathon-url>/v2/apps`
 ```javascript
+curl -X POST -H "Content-Type:application/json" ${MARATHON_HOST}/v2/apps?force=true --data '
 {
   "id": "tsung-master",
   "container": {
@@ -108,7 +109,7 @@ Use Marathon API to make a POST to `http://<marathon-url>/v2/apps`
      "volumes": [
          {
              "containerPath": "/usr/local/tsung",
-             "hostPath": "/media/ephemeral0/var/log/tsung",
+             "hostPath": "/var/lib/log/tsung",
              "mode": "RW"
          }
      ],
@@ -116,7 +117,7 @@ Use Marathon API to make a POST to `http://<marathon-url>/v2/apps`
       "image": "ddragosd/tsung-docker:latest",
       "network": "BRIDGE",
       "portMappings": [
-        { "containerPort": 22, "hostPort": 21, "protocol": "tcp" },
+        { "containerPort": 22, "hostPort": 1025, "protocol": "tcp" },
         { "containerPort": 4369, "hostPort": 4369, "protocol": "tcp" },
         { "containerPort": 9001, "hostPort": 9001, "protocol": "tcp" },
         { "containerPort": 9002, "hostPort": 9002, "protocol": "tcp" },
@@ -175,19 +176,14 @@ Use Marathon API to make a POST to `http://<marathon-url>/v2/apps`
     }
   },
   "cpus": 1,
-  "mem": 2048.0,
+  "mem": 512.0,
   "env": {
     "SLAVE": "true",
-    "MARATHON_URL":"http://<marathon-host>:8080"
+    "MARATHON_URL":"'${MARATHON_HOST}'"
   },
-  "constraints": [
-    [
-      "hostname",
-      "UNIQUE"
-    ]
-  ],
+  "constraints": [ [ "hostname", "UNIQUE" ] ],
   "ports": [
-    21,
+    1025,
     4369,
     9001,9002,9003,9004,9005,9006,9007,9008,9009,9010,
     9011,9012,9013,9014,9015,9016,9017,9018,9019,9020,
@@ -196,13 +192,14 @@ Use Marathon API to make a POST to `http://<marathon-url>/v2/apps`
     9041,9042,9043,9044,9045,9046,9047,9048,9049,9050
   ],
   "instances": 1
-}
+}'
 ```
 
 * Once the master is up and running you can start the slave nodes:
 
 
 ```javascript
+curl -X POST -H "Content-Type:application/json" ${MARATHON_HOST}/v2/apps?force=true --data '
 {
   "id": "tsung-slaves",
   "container": {
@@ -211,7 +208,7 @@ Use Marathon API to make a POST to `http://<marathon-url>/v2/apps`
       "image": "ddragosd/tsung-docker:latest",
       "network": "BRIDGE",
       "portMappings": [
-        { "containerPort": 22, "hostPort": 21, "protocol": "tcp" },
+        { "containerPort": 22, "hostPort": 1025, "protocol": "tcp" },
         { "containerPort": 4369, "hostPort": 4369, "protocol": "tcp" },
         { "containerPort": 9001, "hostPort": 9001, "protocol": "tcp" },
         { "containerPort": 9002, "hostPort": 9002, "protocol": "tcp" },
@@ -266,11 +263,11 @@ Use Marathon API to make a POST to `http://<marathon-url>/v2/apps`
       ]
     }
   },
-  "cpus": 4,
-  "mem": 4096.0,
+  "cpus": 2,
+  "mem": 2048.0,
   "env": {
     "SLAVE": "true",
-    "MARATHON_URL":"http://<marathon-host>:8080"
+    "MARATHON_URL":"'${MARATHON_HOST}'"
   },
   "constraints": [
     [
@@ -279,7 +276,7 @@ Use Marathon API to make a POST to `http://<marathon-url>/v2/apps`
     ]
   ],
   "ports": [
-    21,
+    1025,
     4369,
     9001,9002,9003,9004,9005,9006,9007,9008,9009,9010,
     9011,9012,9013,9014,9015,9016,9017,9018,9019,9020,
@@ -288,7 +285,7 @@ Use Marathon API to make a POST to `http://<marathon-url>/v2/apps`
     9041,9042,9043,9044,9045,9046,9047,9048,9049,9050
   ],
   "instances": 2
-}
+}'
 ```
 
 #### Exposing Tsung test results from Master via Nginx
@@ -298,15 +295,18 @@ Note: This container should run on the same host where `tsung-master` runs.
 You can use [constraints](https://github.com/mesosphere/marathon/blob/master/docs/docs/constraints.md) to achieve that.
 
 
-```javascript
+```bash
+TSUNG_MASTER_HOST=$(curl -s ${MARATHON_HOST}/v2/tasks | grep tsung-master | grep 9050 | awk '{print $3}' | sed 's/\(\:[0-9].*\)//') \
+&& curl -X POST -H "Content-Type:application/json" ${MARATHON_HOST}/v2/apps?force=true --data '
 {
   "id": "tsung-nginx",
+  "cmd": "sed -i s/\"htm;\"/\"htm; autoindex on;\"/g /etc/nginx/conf.d/default.conf && nginx -g \"daemon off;\"",
   "container": {
     "type": "DOCKER",
      "volumes": [
          {
              "containerPath": "/usr/share/nginx/html/tsung",
-             "hostPath": "/media/ephemeral0/var/log/tsung",
+             "hostPath": "/var/lib/log/tsung",
              "mode": "RO"
          }
      ],
@@ -314,22 +314,21 @@ You can use [constraints](https://github.com/mesosphere/marathon/blob/master/doc
       "image": "nginx",
       "network": "BRIDGE",
       "portMappings": [
-        { "containerPort": 80, "hostPort": 80, "protocol": "tcp" }
+        { "containerPort": 80, "hostPort": 0, "protocol": "tcp" }
       ]
     }
   },
-  "cpus": 1,
-  "mem": 1024.0,
-  "constraints": [],
+  "cpus": 0.5,
+  "mem": 512.0,
+  "constraints": [["hostname", "CLUSTER", "'${TSUNG_MASTER_HOST}'"]],
   "ports": [
-    80
+    0
   ],
   "instances": 1
-}
+}'
 ```
 
-By default the nginx server does not index directories. To fix this you can ssh into the docker container and execute:
+By default the nginx server does not index directories. To fix this the Nginx container updates the default conf on start:
 ```
 sed -i s/"htm;"/"htm; autoindex on;"/g /etc/nginx/conf.d/default.conf
-nginx -s reload
 ```
