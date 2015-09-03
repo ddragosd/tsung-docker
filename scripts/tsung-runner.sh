@@ -2,6 +2,13 @@
 
 # Utility to run tsung and automatically generate reports
 
+# configure the SSH port used to connect to tsung agents before starting sshd
+erl_ssh_port=${ERL_SSH_PORT:-21}
+echo "SSH will connect on Port ${erl_ssh_port} with Tsung Agents ... "
+sed -i 's/Port [0-9]*/Port '${erl_ssh_port}'/' /root/.ssh/config
+echo "SSH Config:"
+cat /root/.ssh/config
+
 # make sure SSHD is started in order to connect to other tsung agents
 service sshd start
 

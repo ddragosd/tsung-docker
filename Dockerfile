@@ -1,14 +1,25 @@
 # Tsung
 #
 #
-# VERSION               1.5.1
+# VERSION               1.6.0
 
 FROM          centos:centos6
 MAINTAINER    Dragos Dascalita Haut <ddascal@adobe.com>
 
 RUN yum update -y
 RUN rpm -Uvh "http://download.fedoraproject.org/pub/epel/6/i386/epel-release-6-8.noarch.rpm"
-RUN yum -y install tsung perl-Log-Log4perl-RRDs.noarch gnuplot perl-Template-Toolkit firefox
+RUN yum -y install tsung perl-Log-Log4perl-RRDs.noarch gnuplot perl-Template-Toolkit firefox tar
+
+# until EPEL gets tsung 1.6.0 we're compiling it again, taking advantage of the dependencies that were installed with the previous tsung version
+# Yes, this is the lazy version of upgrading tsung ...
+RUN curl http://tsung.erlang-projects.org/dist/tsung-1.6.0.tar.gz --output /tmp/tsung-1.6.0.tar.gz \
+    && cd /tmp/ \
+    && tar -xvf ./tsung-1.6.0.tar.gz \
+    && cd tsung-1.6.0 \
+    && ./configure \
+    && make \
+    && make install \
+    && rm -rf /tmp/tsung*
 
 #
 # setup SSH Access on Port 22, with the ssh clients using port 21 by default
@@ -21,10 +32,9 @@ RUN ssh-keygen -N "" -f /root/.ssh/id_rsa && \
 
 RUN mkdir -p /var/log/tsung && echo "" > /var/log/tsung/tsung.log
 
-COPY ./scripts/tsung-runner.sh /usr/bin/tsung-runner
-RUN chmod +x /usr/bin/tsung-runner
-
 EXPOSE 22
+# expose Tsung's GUI available with Tsung 1.6.0
+EXPOSE 8091
 
 # EPMD port: http://www.erlang.org/doc/man/epmd.html#environment_variables
 EXPOSE 4369
@@ -54,6 +64,13 @@ RUN chmod +x /usr/bin/tsung-update-hosts
 RUN mkdir -p /etc/tsung/
 RUN echo "* * * * * /usr/bin/tsung-update-hosts >> /var/log/tsung/tsung-update-hosts.log 2>&1" > /etc/crontab
 RUN touch /var/log/tsung/tsung-update-hosts.log
+
+# Port used by Erlang to SSH into the Slaves
+# default value is 21
+ENV ERL_SSH_PORT 21
+
+COPY ./scripts/tsung-runner.sh /usr/bin/tsung-runner
+RUN chmod +x /usr/bin/tsung-runner
 
 ENTRYPOINT ["tsung-runner"]
 

@@ -7,19 +7,34 @@ Docker image to run Tsung distributed load testing tool.
 This Docker container is designed to execute `Tsung` in 3 modes: `SINGLE`,  `MASTER` and `SLAVE`.
 
 #### Single Mode
-Use this single mode to test on the local box, with a single Tsung agent:
+Use this single mode to test on the local box, with a single container:
 
 ```
 docker run \
+   -e "ERL_SSH_PORT=22" \
+   -p 8091:8091 \
    -v /local/tests:/usr/local/tsung ddragosd/tsung-docker:latest \
    -f /usr/local/tsung/mytest.xml \
-   -r \"ssh -p 22\" start
+   -k start
 ```
 
-In this mode you can use a single Tsung client
-```<client host="localhost" cpu="1" use_controller_vm="true"> </client>```
-Note the `-r` flag setting `ssh` port to `22`. This is needed as the SSH runs on port `22` inside the docker container.
+The command above assumes there is a local folder `/local/tests` containing a Tsung test file `mytest.xml`.
+Port `8091` is the default port exposing the Dashboard UI added in Tsung 1.6.0+.
+Flag `-k` keeps the UI running even when the test has completed.
+
+In this mode you can create Tsung clients in the same container, the number of clients being dependent on the number of cpus:
+```<client host="localhost" maxusers="1000" weight="1" cpu="4"> </client>```
+
+Note the `-e "ERL_SSH_PORT=22"` flag setting `ssh` port to `22`. This is needed as the SSH runs on port `22` inside the docker container.
 In a `MASTER` / `SLAVE` scenarios, we'll have this port mapped to `21` as a convention.
+
+TBD: add a generic tsung test file using environment variables:
+- MAX_USERS      = max number of users
+- USERS_REQUESTS = how many requests to make per user.
+- SERVER_HOST = the hostname or IP of the target server to hit
+- SERVER_PORT = the port in the SERVER_HOST to hit
+- SERVER_PATH = the location to hit. the final URL is SERVER_HOST:SERVER_PORT/SERVER_PATH
+
 
 #### Master Mode
 This mode should be used on a local machine by mounting a folder containing the Tsung tests into the container, like in the following example:
@@ -33,13 +48,13 @@ docker run \
    -f /usr/local/tsung/mytest.xml start
 ```
 
-where `/local/tests` is a folder containing an XML file `mytest.xml`.
+where `/local/tests` is a folder containing the test file `mytest.xml`.
 
 * Note: Master Node has to be accessible from all the Slave nodes. Be aware of this when running behind a firewall.
 
 #### Slave Mode
 Use this mode in the distributed mode. All the agents that the `MASTER` Tsung needs to connect to must be started in this mode.
-By convention, the Agents run SSHD on port `21` b/c port `22` might be taken by the hosts running the docker service. For this reason, in order to avoid conflicts, the agents expose ssh on port `21`.
+By convention, the Agents run SSHD by default on port `21` b/c port `22` might be taken by the hosts running the docker service. For this reason, in order to avoid conflicts, the agents expose ssh on port `21`. This port number can be configured through the environment variable `ERL_SSH_PORT`.
 Erlang needs port `4369` open as its [EPMD](http://www.erlang.org/doc/man/epmd.html) Port and all Slaves and Master nodes need to be able to use this port.
 Erlang also uses other ports for communication and this container exposes ports in the range `9001-9050`.
 
@@ -100,7 +115,7 @@ It's recommended to also mount a volume from the host machine to `/usr/local/tsu
 You can then expose that data via a web-server such as `nginx`. The directory on the host must be specified as an absolute path and if the directory doesn't exist Docker should automatically create it for you.
 
 Use Marathon API to make a POST to `http://<marathon-url>/v2/apps`
-```javascript
+```bash
 curl -X POST -H "Content-Type:application/json" ${MARATHON_HOST}/v2/apps?force=true --data '
 {
   "id": "tsung-master",
@@ -179,7 +194,8 @@ curl -X POST -H "Content-Type:application/json" ${MARATHON_HOST}/v2/apps?force=t
   "mem": 512.0,
   "env": {
     "SLAVE": "true",
-    "MARATHON_URL":"'${MARATHON_HOST}'"
+    "MARATHON_URL":"'${MARATHON_HOST}'",
+    "ERL_SSH_PORT":"1025"
   },
   "constraints": [ [ "hostname", "UNIQUE" ] ],
   "ports": [
@@ -198,7 +214,7 @@ curl -X POST -H "Content-Type:application/json" ${MARATHON_HOST}/v2/apps?force=t
 * Once the master is up and running you can start the slave nodes:
 
 
-```javascript
+```bash
 curl -X POST -H "Content-Type:application/json" ${MARATHON_HOST}/v2/apps?force=true --data '
 {
   "id": "tsung-slaves",
@@ -267,7 +283,8 @@ curl -X POST -H "Content-Type:application/json" ${MARATHON_HOST}/v2/apps?force=t
   "mem": 2048.0,
   "env": {
     "SLAVE": "true",
-    "MARATHON_URL":"'${MARATHON_HOST}'"
+    "MARATHON_URL":"'${MARATHON_HOST}'",
+    "ERL_SSH_PORT":"1025"
   },
   "constraints": [
     [
