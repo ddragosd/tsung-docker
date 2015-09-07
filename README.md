@@ -132,6 +132,7 @@ curl -X POST -H "Content-Type:application/json" ${MARATHON_HOST}/v2/apps?force=t
       "image": "ddragosd/tsung-docker:latest",
       "network": "BRIDGE",
       "portMappings": [
+        { "containerPort": 8091, "hostPort": 0, "protocol": "tcp" },      
         { "containerPort": 22, "hostPort": 1025, "protocol": "tcp" },
         { "containerPort": 4369, "hostPort": 4369, "protocol": "tcp" },
         { "containerPort": 9001, "hostPort": 9001, "protocol": "tcp" },
