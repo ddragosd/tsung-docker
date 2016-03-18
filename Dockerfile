@@ -9,7 +9,7 @@ MAINTAINER    Dragos Dascalita Haut <ddascal@adobe.com>
 RUN yum update -y
 RUN rpm -Uvh "http://download.fedoraproject.org/pub/epel/6/i386/epel-release-6-8.noarch.rpm"
 RUN yum -y install perl-Log-Log4perl-RRDs.noarch gnuplot perl-Template-Toolkit firefox tar
-RUN yum -y install erlang
+RUN yum -y install jq erlang
 
 # until EPEL gets tsung 1.6.0 we're compiling it again, taking advantage of the dependencies that were installed with the previous tsung version
 # Yes, this is the lazy version of upgrading tsung ...

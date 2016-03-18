@@ -14,20 +14,35 @@ MARATHON_URL=$(cat /etc/tsung/marathon_url)
 if [[ -n "${MARATHON_URL}" ]]; then
     echo "Discovering tsung-slaves ..."
     #1. discover new tsung_slaves
-    curl -s ${MARATHON_URL}/v2/apps/${tsung_slave_app_name} | grep -Po '"host":"\K.*?(?=")' | xargs dig +short | awk '{ print $1" tsung_slave"NR}' > /etc/tsung/tsung_slaves_hosts.conf
+    slave_tasks=$(eval curl -s ${MARATHON_URL}/v2/apps/${tsung_slave_app_name} | jq -r '.app.tasks[].host')
+    if [[ ${slave_tasks} != "" ]]; then
+        echo ${slave_tasks} | xargs dig +short | awk '{ print $1" tsung_slave"NR}' > /etc/tsung/tsung_slaves_hosts.conf
+    else
+       echo "no tasks found for app=${tsung_slave_app_name}."
+       echo "" > /etc/tsung/tsung_slaves_hosts.conf
+    fi
     #2. clean-up previous discovered tsung_slaves
     sed -r '/tsung_slave/d' /etc/hosts > /etc/hosts-temp
-    # docker down not allow modifying /etc/hosts and the next line works around that
+    # docker does not allow modifying /etc/hosts and the next line works around that
     cat /etc/hosts-temp | tee /etc/hosts > /dev/null
     #3. append the new list to /etc/hosts
     cat /etc/tsung/tsung_slaves_hosts.conf >> /etc/hosts
     cat /etc/tsung/tsung_slaves_hosts.conf
     echo "Discovering tsung-master ..."
     #1. discover tsung_master
-    curl -s ${MARATHON_URL}/v2/apps/${tsung_master_app_name} | grep -Po '"host":"\K.*?(?=")' | xargs dig +short | awk '{ print $1" tsung_master"}' > /etc/tsung/tsung_master_hosts.conf
+    slave_tasks=$(eval curl -s ${MARATHON_URL}/v2/apps/${tsung_master_app_name} | jq -r '.app.tasks[].host')
+    if [[ ${slave_tasks} != "" ]]; then
+        echo ${slave_tasks} | xargs dig +short | awk '{ print $1" tsung_slave"NR}' > /etc/tsung/tsung_master_hosts.conf
+    else
+       echo "no tasks found for app=${tsung_master_app_name}."
+       echo "" > /etc/tsung/tsung_master_hosts.conf
+       echo "will exit here"
+       echo "DONE"
+       exit
+    fi
     #2. clean-up previous discovered tsung_master
     sed -r '/tsung_master/d' /etc/hosts > /etc/hosts-temp
-    # docker down not allow modifying /etc/hosts and the next line works around that
+    # docker does not allow modifying /etc/hosts and the next line works around that
     cat /etc/hosts-temp | tee /etc/hosts > /dev/null
     #3. append the new list to /etc/hosts
     cat /etc/tsung/tsung_master_hosts.conf >> /etc/hosts
